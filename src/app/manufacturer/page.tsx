@@ -1,14 +1,22 @@
-// app/manufacturer/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function ManufacturerDashboard() {
   const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending, error: txError } = useWriteContract();
+  const {
+    writeContract,
+    data: hash,
+    isPending,
+    error: txError,
+  } = useWriteContract();
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const [form, setForm] = useState({
@@ -60,13 +68,15 @@ export default function ManufacturerDashboard() {
       abi: CONTRACT_ABI,
       functionName: 'registerProduct',
       args: [form.productId, form.productName, form.ipfsHash, form.qualityInfo],
-      gas: BigInt(150000),
+      // higher gas limit – safe for Sepolia
+      gas: BigInt(500_000),
     });
   };
 
+  // optional “force success” after 15 s (kept for very slow nodes)
   useEffect(() => {
     if (hash && confirming) {
-      const timer = setTimeout(() => setForceSuccess(true), 15000);
+      const timer = setTimeout(() => setForceSuccess(true), 15_000);
       return () => clearTimeout(timer);
     }
   }, [hash, confirming]);
@@ -74,16 +84,21 @@ export default function ManufacturerDashboard() {
   const showSuccess = isSuccess || forceSuccess;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-indigo-400">Register New Product Batch</h1>
+        <h1 className="text-3xl font-bold text-indigo-400">
+          Register New Product Batch
+        </h1>
         <ConnectButton />
       </div>
 
       {!isConnected ? (
         <p className="text-center text-gray-400">Connect wallet to register</p>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-gray-900 p-8 rounded-xl shadow-lg border border-gray-800 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-gray-900 p-8 rounded-xl shadow-lg border border-gray-800 space-y-6"
+        >
           <input
             placeholder="Product ID (e.g. COCOA002)"
             value={form.productId}
@@ -101,7 +116,9 @@ export default function ManufacturerDashboard() {
           />
 
           <div>
-            <label className="block font-medium mb-2 text-gray-300">Upload Metadata</label>
+            <label className="block font-medium mb-2 text-gray-300">
+              Upload Metadata
+            </label>
             <input
               type="file"
               accept="image/*,.pdf"
@@ -128,14 +145,28 @@ export default function ManufacturerDashboard() {
             disabled={isPending || confirming || uploading || !form.ipfsHash}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-lg font-bold disabled:bg-gray-700 disabled:cursor-not-allowed transition"
           >
-            {uploading ? 'Uploading...' : isPending ? 'Sending...' : confirming && !showSuccess ? 'Confirming...' : 'Register (~₦300)'}
+            {uploading
+              ? 'Uploading...'
+              : isPending
+              ? 'Sending...'
+              : confirming && !showSuccess
+              ? 'Confirming...'
+              : 'Register (~₦300)'}
           </button>
 
-          {txError && <p className="text-red-400 text-center">Error: {txError.message}</p>}
+          {txError && (
+            <p className="text-red-400 text-center">{txError.message}</p>
+          )}
+
           {showSuccess && hash && (
             <p className="text-green-400 text-center">
               Success!{' '}
-              <a href={`https://sepolia.etherscan.io/tx/${hash}`} target="_blank" className="underline">
+              <a
+                href={`https://sepolia.etherscan.io/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
                 View on Etherscan
               </a>
             </p>
@@ -144,5 +175,4 @@ export default function ManufacturerDashboard() {
       )}
     </div>
   );
-
 }
